@@ -8,11 +8,23 @@ city <- read.csv("data/urban_sf_sgubik.csv")
 city.env <- read.csv("data/urban_env.csv")
 records <- readRDS("data/gbif_gubic_list_per_city_final2_20241015.rds")
 
-# Include singletons. Cities with no positive observed count have no effort estimate.
-observed <- which(records$n_records_urban > 0)
+# Keep city–species pairs with at least one urban record, including singletons.
+urban_rows <- which(records$n_records_urban > 0)
+records_urb <- records[urban_rows, ]
+records_urb$n_records_buffer_5km <- NULL
+
+# Count distinct urban taxa 
+#intro
+length(unique(records_urb$accepted_taxon_name_binomial[
+  !is.na(records_urb$status_glonaf_gbif)]))
+#native
+length(unique(records_urb$accepted_taxon_name_binomial[
+  is.na(records_urb$status_glonaf_gbif)]))
+
+# Cities with no positive urban count have no effort estimate.
 urban_record_totals <- aggregate(
-  list(tot.records = records$n_records_urban[observed]),
-  by = list(ID_HDC_G0_2 = records$ID_HDC_G0_2[observed]),
+  list(tot.records = records_urb$n_records_urban),
+  by = list(ID_HDC_G0_2 = records_urb$ID_HDC_G0_2),
   FUN = sum)
 
 city_index <- match(city$ID_HDC_G0_2, urban_record_totals$ID_HDC_G0_2)
@@ -90,9 +102,17 @@ PI_continent <- ggplot(city_summary, aes(x = continent, y = Prop.I)) +
 
 # Combine after editing the individual panels.
 PI_bivariate <- (PI_hist / PI_species / PI_records |
-  PI_gdp / PI_population / PI_continent)
+  PI_gdp / PI_population / PI_continent)+
+  plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(face = "bold", size = 16),
+    plot.tag.position = c(0.02, 1.0))
 
-# ggsave("out/prop_I_bivariate.pdf", PI_bivariate, width = 10, height = 7)
+# ggsave("out/prop_I_bivariate.pdf", PI_bivariate, width = 10, height = 12)
 
 
-#predictors
+#just histogram and continent
+PI2<-(PI_hist /  PI_continent)+
+  plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(face = "bold", size = 16),
+    plot.tag.position = c(0, 1.0))
+# ggsave("out/prop_I_2plot.pdf", PI2, width = 8, height = 7)
